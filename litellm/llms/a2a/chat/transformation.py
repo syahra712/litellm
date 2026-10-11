@@ -131,13 +131,13 @@ class A2AConfig(BaseConfig):
         return api_base, api_key, headers
 
     def get_supported_openai_params(self, model: str) -> list[str]:
-        """Return list of supported OpenAI parameters"""
-        return [
-            "stream",
-            "temperature",
-            "max_tokens",
-            "top_p",
-        ]
+        """
+        Return list of supported OpenAI parameters.
+
+        A2A ``message/send`` params carry no sampling controls, so only ``stream`` is
+        forwarded; declaring anything else would drop it silently instead of raising.
+        """
+        return ["stream"]
 
     def map_openai_params(
         self,
