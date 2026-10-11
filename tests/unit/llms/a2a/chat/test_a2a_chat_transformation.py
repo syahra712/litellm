@@ -4,9 +4,11 @@ from unittest.mock import MagicMock
 
 import pytest
 
+import litellm
 from litellm.llms.a2a.chat.streaming_iterator import A2AModelResponseIterator
 from litellm.llms.a2a.chat.transformation import A2AConfig
 from litellm.types.utils import ModelResponse
+from litellm.utils import get_optional_params
 
 
 def _raw_response(text: str) -> MagicMock:
@@ -121,3 +123,26 @@ def test_resolve_agent_config_from_registry_returns_the_explicit_headers_object_
     assert resolved[2] is headers
     assert resolved[:2] == ("http://explicit.example", "explicit-key")
     assert optional_params == {"stream": True}
+
+
+def test_get_supported_openai_params_only_declares_forwarded_params():
+    assert A2AConfig().get_supported_openai_params(model="test-agent") == ["stream"]
+
+
+@pytest.mark.parametrize("param, value", [("temperature", 0.7), ("max_tokens", 128), ("top_p", 0.9)])
+def test_sampling_params_are_rejected_instead_of_silently_dropped(param: str, value: float):
+    with pytest.raises(litellm.UnsupportedParamsError):
+        get_optional_params(model="test-agent", custom_llm_provider="a2a", **{param: value})
+
+
+@pytest.mark.parametrize("param, value", [("temperature", 0.7), ("max_tokens", 128), ("top_p", 0.9)])
+def test_sampling_params_are_dropped_when_drop_params_is_set(param: str, value: float):
+    optional_params = get_optional_params(
+        model="test-agent", custom_llm_provider="a2a", drop_params=True, **{param: value}
+    )
+
+    assert param not in optional_params
+
+
+def test_stream_is_still_forwarded():
+    assert get_optional_params(model="test-agent", custom_llm_provider="a2a", stream=True)["stream"] is True
